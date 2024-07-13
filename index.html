@@ -1,0 +1,142 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>fWiki</title>
+</head>
+<body>
+    <script>
+        const article_data = {TMP_ARTICLE_DATA}; // will be overwritten by the server
+
+        // format: {title, text}
+
+        document.title = article_data.title;
+
+        function replace_text(text) {
+            // Argument: text (string) - a markdown text as a single line string
+            let text_body = document.getElementById("text");
+            text_body.innerHTML = "";
+
+            // Regular expressions for matching markdown elements
+            const headerRegex = /(={2,6})(.*?)\1/g;
+            const listItemRegex = /(?:^|\s)([*-])\s+(.*?)(?=\s+[*-]\s+|\s*$)/g;
+            
+            let lastIndex = 0;
+            let match;
+            let headers = [];
+
+            while (lastIndex < text.length) {
+                // Check for headers
+                headerRegex.lastIndex = lastIndex;
+                match = headerRegex.exec(text);
+                if (match && match.index === lastIndex) {
+                    const level = match[1].length;
+                    const content = match[2].trim();
+                    const header = document.createElement(`h${level}`);
+                    header.textContent = content;
+                    const id = content.toLowerCase().replace(/\s+/g, '-');
+                    header.id = id;
+                    text_body.appendChild(header);
+                    headers.push({ id, element: header });
+                    lastIndex = headerRegex.lastIndex;
+                    continue;
+                }
+
+                // Check for list items
+                listItemRegex.lastIndex = lastIndex;
+                match = listItemRegex.exec(text);
+                if (match && match.index === lastIndex) {
+                    const listItem = document.createElement('li');
+                    listItem.textContent = match[2];
+                    
+                    let list = text_body.lastElementChild;
+                    if (!list || list.tagName !== 'UL') {
+                        list = document.createElement('ul');
+                        text_body.appendChild(list);
+                    }
+                    
+                    list.appendChild(listItem);
+                    lastIndex = listItemRegex.lastIndex;
+                    continue;
+                }
+
+                // If no match, treat as regular text until next special character
+                const nextSpecialChar = text.indexOf('=', lastIndex);
+                const nextListChar = text.indexOf('- ', lastIndex);
+                let endIndex = Math.min(
+                    nextSpecialChar !== -1 ? nextSpecialChar : Infinity,
+                    nextListChar !== -1 ? nextListChar : Infinity,
+                    text.length
+                );
+
+                if (endIndex > lastIndex) {
+                    const paragraph = document.createElement('p');
+                    paragraph.textContent = text.slice(lastIndex, endIndex).replace(/\\"/g, '"');
+                    text_body.appendChild(paragraph);
+                    lastIndex = endIndex;
+                } else {
+                    // Move to next character if we're stuck
+                    lastIndex++;
+                }
+            }
+        }
+
+        document.addEventListener("DOMContentLoaded", () => {
+            document.getElementById("title").innerText = article_data.title;
+            replace_text(article_data.text);
+        });
+
+        // fix for anchor links
+        window.addEventListener('hashchange', () => {
+            const id = window.location.hash.slice(1);
+            const element = document.getElementById(id);
+            if (element) {
+                element.scrollIntoView();
+            }
+        });
+
+    </script>
+
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 0;
+            background-color: #f0f0f0;
+        }
+
+        #container {
+            width: 60%;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #fff;
+            border-radius: 5px;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+            margin-top: 20px;
+        }
+
+        #title {
+            font-size: 24px;
+            margin: 0;
+            padding: 0;
+        }
+
+        #text {
+            margin-top: 20px;
+            hyphens: auto;
+            text-align: justify;
+        }
+
+        
+    </style>
+
+    <div id="container">
+        <h1 id="title"></h1>
+
+        <div id="text">
+            <p>Loading...</p>
+        </div>
+    </div>
+</body>
+</html>
